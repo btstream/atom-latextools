@@ -80,7 +80,7 @@ class Builder extends LTool
     if te.isModified()
       te.save()
 
-    fname = get_tex_root(te)
+    fname = get_tex_root(te, @ltProject)
 
     parsed_fname = path.parse(fname)
 

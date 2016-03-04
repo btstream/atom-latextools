@@ -13,7 +13,7 @@ module.exports.LTool =
 class LTool
   viewer: null
 
-  constructor: (@ltConsole) ->
+  constructor: (@ltConsole, @ltProject) ->
 
 
 # Utility functions
@@ -23,7 +23,11 @@ class LTool
 # TODO add support for configurable extensions
 
 # In: current tex file; Out: file to be compiled
-module.exports.get_tex_root = (editor) ->
+module.exports.get_tex_root = (editor, project) ->
+
+  if project?.TEXroot?
+    return project.TEXroot
+
   if typeof(editor) is 'string'
     root = editor
   else

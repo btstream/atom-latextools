@@ -71,7 +71,7 @@ class CompletionManager extends LTool
 
   refComplete: (te) ->
 
-    fname = get_tex_root(te) # pass TextEditor, thanks to ig0777's patch
+    fname = get_tex_root(te, @ltProject) # pass TextEditor, thanks to ig0777's patch
 
     parsed_fname = path.parse(fname)
 
@@ -95,7 +95,7 @@ class CompletionManager extends LTool
 
   citeComplete: (te) ->
 
-    fname = get_tex_root(te)
+    fname = get_tex_root(te, @ltProject)
 
     parsed_fname = path.parse(fname)
 

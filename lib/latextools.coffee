@@ -3,6 +3,7 @@ Builder = null
 Viewer = null
 CompletionManager = null
 SnippetManager = null
+LTProject = null
 {Disposable, CompositeDisposable} = require 'atom'
 path = require 'path'
 
@@ -175,9 +176,10 @@ module.exports = Latextools =
     @builder = null
     @completionManager = null
     @snippetManager = null
+    @ltProject = null
 
     # ltConsole is needed by all, so load it
-    @requireIfNeeded ['ltconsole']
+    @requireIfNeeded ['ltconsole', 'ltProject']
 
     # Events subscribed to in atom's system can be easily cleaned up with a CompositeDisposable
     @subscriptions = new CompositeDisposable
@@ -291,16 +293,19 @@ module.exports = Latextools =
           @ltConsole ?= new LTConsole(@state.ltConsoleState)
         when "viewer"
           Viewer ?= require './viewer'
-          @viewer ?= new Viewer(@ltConsole)
+          @viewer ?= new Viewer(@ltConsole, @ltProject)
         when "builder"
           # do an explicit check here,
           if Builder is null
             Builder = require './builder'
-            @builder = new Builder(@ltConsole)
+            @builder = new Builder(@ltConsole, @ltProject)
             @builder.viewer = @viewer # NOTE: MUST be loaded first!
         when "completion-manager"
           CompletionManager ?= require './completion-manager'
-          @completionManager ?= new CompletionManager(@ltConsole)
+          @completionManager ?= new CompletionManager(@ltConsole, @ltProject)
         when "snippet-manager"
           SnippetManager ?= require './snippet-manager'
-          @snippetManager ?= new SnippetManager(@ltConsole)
+          @snippetManager ?= new SnippetManager(@ltConsole, @ltProject)
+        when 'ltProject'
+          LTProject ?= require './ltproject'
+          @ltProject ?= new LTProject()
