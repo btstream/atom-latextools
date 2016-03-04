@@ -25,9 +25,6 @@ class LTool
 # In: current tex file; Out: file to be compiled
 module.exports.get_tex_root = (editor, project) ->
 
-  if project?.TEXroot?
-    return project.TEXroot
-
   if typeof(editor) is 'string'
     root = editor
   else
@@ -37,6 +34,9 @@ module.exports.get_tex_root = (editor, project) ->
   if directives.root?
     root = path.resolve(path.dirname(root), directives.root)
   return root
+
+  if project?.TEXroot?
+    return project.TEXroot
 
 
 # Check if a file exists
