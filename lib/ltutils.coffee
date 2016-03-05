@@ -32,11 +32,12 @@ module.exports.get_tex_root = (editor, project) ->
 
   directives = parse_tex_directives editor
   if directives.root?
-    root = path.resolve(path.dirname(root), directives.root)
-  return root
+    return path.resolve(path.dirname(root), directives.root)
 
   if project?.TEXroot?
     return project.TEXroot
+
+  return root
 
 
 # Check if a file exists
