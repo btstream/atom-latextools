@@ -30,7 +30,7 @@ module.exports.get_tex_root = (editor, project) ->
   else
     root = editor.getPath()
 
-  directives = parse_tex_directives editor
+  directives = parse_tex_directives editor, onlyFor: ['root']
   if directives.root?
     return path.resolve(path.dirname(root), directives.root)
 
@@ -47,6 +47,27 @@ module.exports.is_file = (fname) ->
   catch e # statSync errors out if tex_src doesn't exist
     return false
   return s.isFile()
+
+
+# Check if a folder exists
+module.exports.is_dir = (dname) ->
+  try
+    s = fs.statSync dname
+  catch e
+    return false
+  s.isDirectory()
+
+
+# Convenience method to convert an array of args into an escaped string
+module.exports.quote = (list) ->
+  (for s in list
+    if /["\s]/.test(s) and not /'/.test(s)
+      "'#{s.replace(/(['\\])/g, '\\$1')}'"
+    else if /["'\s]/.test(s)
+      "\"#{s.replace(/(["'\\$`!])/g, '\\$1')}\""
+    else
+      String(s).replace(/([\\$`(){}!#&*|])/g, '\\$1')
+  ).join ' '
 
 
 # Find all matches of a regex starting from a master file

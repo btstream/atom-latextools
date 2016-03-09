@@ -1,6 +1,7 @@
 LTConsole = null
 Builder = null
 Viewer = null
+ViewerRegistry = null
 CompletionManager = null
 SnippetManager = null
 LTProject = null
@@ -38,6 +39,11 @@ module.exports = Latextools =
       type: 'boolean'
       default: true
       order: 6
+    viewer:
+      type: 'string'
+      default: 'default'
+      enum: ['default', 'pdf-view']
+      order: 6.5
 
     # commandCompletion:
     #   type: 'string'
@@ -157,6 +163,7 @@ module.exports = Latextools =
         #     type: 'string'
       order: 18
 
+
 # Still need image opening defaults
 # Also, rethink below
 
@@ -176,10 +183,13 @@ module.exports = Latextools =
     @builder = null
     @completionManager = null
     @snippetManager = null
+    @viewerRegistry = null
     @ltProject = null
 
-    # ltConsole is needed by all, so load it
-    @requireIfNeeded ['ltconsole', 'ltProject']
+    # function to register a viewer with latextools
+    @addViewer = (names, cls) =>
+      @requireIfNeeded ['viewer']
+      @viewerRegistry.add names, cls
 
     # Events subscribed to in atom's system can be easily cleaned up with a CompositeDisposable
     @subscriptions = new CompositeDisposable
@@ -199,10 +209,16 @@ module.exports = Latextools =
       @ltConsole.show()
     @subscriptions.add atom.commands.add 'atom-text-editor', 'latextools:build': =>
       @requireIfNeeded ['viewer', 'builder']
-      @builder.build()
-    @subscriptions.add atom.commands.add 'atom-workspace', 'latextools:jump-to-pdf': =>
+      # drop to JS to call this.getModel() which is the TextEditor the command
+      # is run on
+      te = `this.getModel()`
+      @builder.build(te)
+    @subscriptions.add atom.commands.add 'atom-text-editor', 'latextools:jump-to-pdf': =>
       @requireIfNeeded ['viewer']
-      @viewer.jumpToPdf()
+      # drop to JS to call this.getModel() which is the TextEditor the command
+      # is run on
+      te = `this.getModel()`
+      @viewer.jumpToPdf(te)
     @subscriptions.add atom.commands.add 'atom-text-editor', 'latextools:ref-cite-complete': =>
       @requireIfNeeded ['completion-manager', 'snippet-manager']
       # drop to JS to call this.getModel() which is the TextEditor the command
@@ -253,7 +269,6 @@ module.exports = Latextools =
       @snippetManager.quotes('``', '\'\'', '"')
 
 
-
     # Autotriggered functionality
     # add autocomplete to every text editor that has a tex file
     atom.workspace.observeTextEditors (te) =>
@@ -284,19 +299,42 @@ module.exports = Latextools =
 
   # Private: ensure modules are loaded on demand
   requireIfNeeded: (modules) ->
+    # ltConsole is needed by all, so load it
+    unless LTConsole?
+      LTConsole = require './ltconsole'
+      @ltConsole = new LTConsole @state.ltConsoleState
+
+    # so as ltproject
+    unless LTProject?
+      LTProject = require './ltproject'
+      @ltProject ?= new LTProject()
 
     for m in modules
       console.log("requiring if needed: #{m}")
       switch m
-        when "ltconsole"
-          LTConsole ?= require './ltconsole'
-          @ltConsole ?= new LTConsole(@state.ltConsoleState)
         when "viewer"
-          Viewer ?= require './viewer'
-          @viewer ?= new Viewer(@ltConsole, @ltProject)
+          unless Viewer?
+            ViewerRegistry = require './viewer-registry'
+            @viewerRegistry = new ViewerRegistry
+
+            @viewerRegistry.add 'pdf-view',
+              require './viewers/atom-pdf-viewer'
+
+            switch process.platform
+              when 'darwin'
+                @viewerRegistry.add ['default', 'skim'],
+                  require './viewers/skim-viewer'
+              when 'win32'
+                @viewerRegistry.add ['default', 'sumatra'],
+                  require './viewers/sumatra-viewer'
+              else
+                @viewerRegistry.add ['default', 'okular'],
+                  require './viewers/okular-viewer'
+
+            Viewer = require './viewer'
+            @viewer = new Viewer @viewerRegistry, @ltConsole
         when "builder"
-          # do an explicit check here,
-          if Builder is null
+          unless Builder?
             Builder = require './builder'
             @builder = new Builder(@ltConsole, @ltProject)
             @builder.viewer = @viewer # NOTE: MUST be loaded first!
@@ -306,6 +344,3 @@ module.exports = Latextools =
         when "snippet-manager"
           SnippetManager ?= require './snippet-manager'
           @snippetManager ?= new SnippetManager(@ltConsole, @ltProject)
-        when 'ltProject'
-          LTProject ?= require './ltproject'
-          @ltProject ?= new LTProject()

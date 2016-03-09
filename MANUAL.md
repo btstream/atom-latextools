@@ -1,8 +1,8 @@
 # THE LATEXTOOLS MANUAL
 
-**Atom Edition** v0.7.6 (1/28/2016)
+**Atom Edition** v0.8.0 (3/6/2016)
 
-by Marciano Siniscalchi
+by Ian Bacher and Marciano Siniscalchi
 
 ## Introduction
 
@@ -15,10 +15,11 @@ LaTeXTools simplifies the preparation of LaTeX documents on the Atom text editor
 
 If you are reading this document, you have already installed LaTeXTools, so congratulations :) In any event, installation is performed in the usual way, from `Settings|Install` in Atom, or using the `apm` command.
 
-You will need to install two additional Atom packages. The second is, strictly speaking, optional, but you are likely to need it if you soft-wrap your lines.
+You will need to install one additional Atom package, and possibly one or two more. The second is, strictly speaking, optional, but you are likely to need it if you soft-wrap your lines. The third is entirely optional--only install it if you are not happy with native PDF viewers on your platform.
 
 * `language-latex`: this is required for LaTeX syntax highlighting. It is also necessary for snippets to work correctly, as it defines text scopes for LaTeX text and math.
 * `grammar-token-limit`: Atom currently has a known limitation: the syntax highlighter will stop working after 100 tokens in a single line. You  will get no highlighting, or inconsistent highligting. This package allows you to raise that limit. I use 300. Don't go crazy, but experiment.
+* `pdf-view`: a Javascript-based PDF viewer that integrates nicely with Atom. It now supports both forward and inverse search.
 
 You should also make sure that the `atom` executable is installed and on your path. TODO ELABORATE
 
@@ -28,13 +29,12 @@ On Windows, both `miktex` and `texlive` are supported distributions. You need to
 
 If you use `texlive`, make sure you also install `latexmk`. (This is included in the full install, but may be omitted if you install a smaller subset of the distribution.)
 
-`SumatraPDF` is the only supported viewer. The reason is that it supports inverse and forward search; other viewers do not.
+`SumatraPDF` is the only supported viewer (in addition to the Atom-based `pdf-view`). The reason is that it supports inverse and forward search; other viewers do not.
 
 To ensure that inverse search works, TODO ELABORATE
 
 #### Settings
 
-**NOTE:** only the options listed below are currently implemented. Disregard any other options you see in the Settings page.
 
 | Setting | CSON | Description |
 |------|----------|-------------|
@@ -46,7 +46,7 @@ To ensure that inverse search works, TODO ELABORATE
 
 ### OS X
 
-On OS X, use the `MacTeX` distribution. The only currently supported PDF viewer is `Skim`, which supports forward and inverse search.
+On OS X, use the `MacTeX` distribution. The only currently supported PDF viewer (in addition to the Atom-based `pdf-view`) is `Skim`, which supports forward and inverse search.
 
 If you install the "base" distribution (not the full one), you need to install `latexmk` separately using the `tlmgr` package manager.
 
@@ -59,7 +59,7 @@ To set up inverse search on Skim, go to the Preferences menu, select the Sync ta
 
 ### Linux
 
-On Linux, `texlive` is the officially supported distribution. For the time being, only the `okular` viewer is supported. It does provide forward and inverse search.
+On Linux, `texlive` is the officially supported distribution. For the time being, only the `okular` viewer is supported (in addition to the Atom-based `pdf-view`). It does provide forward and inverse search.
 
 Make sure to install the `latexmk` package; you can use the `tlmgr` utility, or (possibly) your distribution's package manager.
 
@@ -104,9 +104,11 @@ This invokes either `texify` (Windows, MikTeX distribution) or `latexmk` (TeXLiv
 
 After compilation, LaTeXTools will show a panel ("LaTeXTools Console") at the bottom of the editor tab and display any errors or warnings. Every such error or warning is clickable: it will move the cursor to the offending line in the tex source, so that you can easily fix the problem.
 
-The LaTeXTools Console stays visible after compilation by default, even if there is no error. (This will become configurable in a later version.) To dismiss it, use `C-l  escape`. Make sure the focus is currently on a tex editor tab, or this keybinding will not work.
+The LaTeXTools Console stays visible after compilation by default, even if there is no error. (This will become configurable in a later version.) To dismiss it, use `C-l  escape`, or click the close box. Make sure the focus is currently on a tex editor tab, or this keybinding will not work. Also note that the console is resizable, using the mouse as usual.
 
 Finally, if there were no errors, LaTeXTools will launch your PDF previewer and, by default, jump to the location corresponding to the position of the cursor in the tex source file ("forward search"). Also, by default, the focus will remain on Atom. These behaviors are configurable via settings.
+
+The text in the LaTeXTools console is selectable as usual.
 
 ### Jump to current location in the PDF file
 
@@ -147,6 +149,32 @@ Please note: passing options can both be a security risk (if e.g. you enable `wr
 | *Builder* | `builder` | Currently, a single option is available, `texify-latexmk`.|
 | *Builder Settings Program* | `builderSettings.program`| One of `pdflatex`, `xelatex`, `lualatex`. Selects the tex engine to use.|
 | *Builder Settings Options* | `builderSettings.options` | Array of command-line options to pass to the tex engine.|
+
+### Viewer settings
+
+Note: these are *in addition* to any platform settings that may be relevant to you (e.g., settings for `SumatraPDF`), and the above focus- and sync-related bulild settings.
+
+| Setting | CSON | Description |
+|---|---|---|
+| *Viewer* | `viewer` | `default` (native, platform-specific viewer) or `pdf-view` (Atom-based).|
+
+
+### Notes on pdf-view
+
+The Atom `pdf-view` package is supported as of v. 0.8.0. A couple of comments are in order.
+
+First, `pdf-view` uses the `synctex` command-line utility to implement backward and forward search. This means that you must have the `synctex` binary somewhere on your path; alternatively, `pdf-view` has a setting that allows you to specify where it is.
+
+The issue is how to make sure you have the `synctex` binary. If you are on Mac OS X and you installed the full MacTeX distro, you do---there is nothing else you need to do. If, however, you didn't install it, then you need to figure out how to add it using the MacTeX `tlmgr` utility. The same applies to TeXLive on Linux (and Windows): either you installed the entire distribution, or you must add the relevant package.
+
+On Windows, MikTeX does *not* provide `synctex` at all. On my machine, I installed the minimal TeXLive scheme, then added the `synctex` package (search for `synctex` in the TeXLive package manager). Then, I pointed `pdf-view` to the right location (the TeXLive binary directory). Just to be clear: the TeXLive distro is *not needed*; it was just the easiest, laziest way for me to get `synctex`. I could not find a stand-alone binary. If anyone has a better idea of how to get this to work, let me know!
+
+Second: by default, LaTeXTools opens the PDF preview in a separate pane, side-by-side with the pane containing the TeX source. (Remember, a pane is a collection of tabs in Atom). This works well if you have a large screen, or good eyesight. If neither of these apply to you (I have a 13in laptop and horrible eyesight!) you can simply drag the PDF tab to the pane containing the tab with your TeX source. Forward and inverse search will continue to work, but you now have the full width of your Atom window available for the TeX and PDF views (of course, you will need to switch between the two tabs).
+
+Note that the *Keep Focus* and *Forward Sync* settings are honored. If you keep the TeX and PDF files side by side, you probably want to leave *Keep Focus* on (the default). Otherwise, you probably want to set *Keep Focus* to false, so upon compilation the PDF tab is displayed.
+
+Finally, forward search in `pdf-viw` is not perfect. Basically, `pdf-view` gets the page right, but does not scroll the document up/down so the relevant line (the one corresponding to the cursor position in the TeX file) is visible. This is a `pdf-view` limitation.
+
 
 ## Reference and Citation Completion
 
@@ -245,13 +273,13 @@ The following table assumes that the text `blah` is currently *selected*.
 | `C-l C-e` | `blah` is replaced with `\emph{blah}`|
 | `C-l C-b` | `blah` is replaced with `\textbf{blah}`|
 | `C-l C-u` | `blah` is replaced with `\underline{blah}`|
-| `C-l C-t` | `blah` is replaced with `\texttt{blah}`|
+| `C-l C-m` | `blah` is replaced with `\texttt{blah}`|
 | `C-l C-n` | `blah` is replaced with `\begin{env}`, `blah`, `\end{env}` on three separate lines; `env` is selected in the first and third lines.|
 
 The functionality just described is mostly useful if you are creating a command or environment from scratch. However, you sometimes have existing text, and just want to apply some formatting to it via a LaTeX command or environment, such as `\emph` or `\begin{theorem}...\end{theorem}`.
 
 LaTeXTools' wrapping facility helps you in just these circumstances. All commands below are activated via a key binding, and *require some text to be selected first*. Also, as a mnemonic aid, *all wrapping commands involve typing `C-l C-something`* (which you can achieve by just holding the `C-` key down after typing `l`).
 
-`C-l C-e`, `C-l C-b`, `C-l C-u` and `C-l C-t` should be self-explanatory. `C-l C-c` wraps the selected text in a LaTeX command structure. If the currently selected text is `blah`, you get `\cmd{blah}`, and the letters `cmd` are highlighted. Replace them with whatever you want, then hit Tab: the cursor will move to the end of the command. Finally, `C-l C-n` wraps the selected text in a LaTeX environment structure. You get `\begin{env}`,`blah`, `\end{env}` on three separate lines, with `env` selected. Change `env` to whatever environment you want, then hit Tab to move to the end of the environment.
+`C-l C-e`, `C-l C-b`, `C-l C-u` and `C-l C-m` should be self-explanatory. `C-l C-c` wraps the selected text in a LaTeX command structure. If the currently selected text is `blah`, you get `\cmd{blah}`, and the letters `cmd` are highlighted. Replace them with whatever you want, then hit Tab: the cursor will move to the end of the command. Finally, `C-l C-n` wraps the selected text in a LaTeX environment structure. You get `\begin{env}`,`blah`, `\end{env}` on three separate lines, with `env` selected. Change `env` to whatever environment you want, then hit Tab to move to the end of the environment.
 
 These commands also work if there is no selection. In this case, they try to do the right thing; for example, `C-l C-e` gives `\emph{}` with the cursor between the curly braces.

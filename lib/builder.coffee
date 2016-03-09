@@ -62,11 +62,8 @@ class Builder extends LTool
 
     return command
 
-  build: ->
-    te = atom.workspace.getActiveTextEditor()
-
-    @ltConsole.show()
-    @ltConsole.clear()
+  build: (te) ->
+    return unless te?
 
     # save on build
     # if unsaved, run saveAs
@@ -90,8 +87,8 @@ class Builder extends LTool
 
     # Get options and programs
     directives = parse_tex_directives fname,
-      multiValues = ['option'],
-      keyMaps = {'ts-program': 'program'}
+      multiValues: ['option'],
+      keyMaps: {'ts-program': 'program'}
 
     user_options = atom.config.get("latextools.builderSettings.options")
     user_options = user_options.concat directives.option
@@ -149,8 +146,14 @@ class Builder extends LTool
       cmd_env.MYTEST = "Hello, world!"
       command = command
 
+      options =
+        cwd: filedir
+        env: cmd_env
+        # 25 MB
+        maxBuffer: 26214400
+
       # cd to dir and run command; add output to console for now
-      exec command, {cwd: filedir, env: cmd_env}, (err, stdout, stderr) =>
+      exec command, options, (err, stdout, stderr) =>
         # If there were errors, print them and return
         # if err
         #   @ltConsole.addContent("BUILD ERROR!", br=true)
@@ -184,8 +187,13 @@ class Builder extends LTool
               @ltConsole.addContent err_string, level: 'error'
             else
               err_string = "#{err[0]}:#{err[1]}: #{err[2]} [#{err[3]}]"
+              file = switch
+                when not err[0]? or err[0] is '[no file]' then null
+                when path.isAbsolute(err[0]) then err[0]
+                else path.join(filedir, err[0])
+
               @ltConsole.addContent err_string,
-                file: if path.isAbsolute(err[0]) then err[0] else path.join(filedir,err[0])
+                file: file
                 line: err[1]
                 level: 'error'
 
@@ -197,11 +205,16 @@ class Builder extends LTool
               @ltConsole.addContent warn_string, level: 'warning'
             else
               warn_string = "#{warn[0]}:#{warn[1]}: #{warn[2]}"
+              file = switch
+                when not warn[0]? or warn[0] is '[no file]' then null
+                when path.isAbsolute(warn[0]) then warn[0]
+                else path.join(filedir, warn[0])
+
               @ltConsole.addContent warn_string,
-                file: if path.isAbsolute(warn[0]) then warn[0] else path.join(filedir,warn[0])
+                file: file
                 line: warn[1]
                 level: 'warning'
 
         # Jump to PDF
         @ltConsole.addContent("Jumping to PDF...")
-        @viewer.jumpToPdf()
+        @viewer.jumpToPdf(te)
