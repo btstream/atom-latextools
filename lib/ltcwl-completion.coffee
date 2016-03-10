@@ -31,7 +31,7 @@ module.exports =
 
       # if not in a environment, do not include '\end' tag
       # in the suggest list
-      if not env_name? and x[0].match(/^end\{[^\}]*\}/)?
+      if not env_name? and x[0].match(/^end\{(?!.*document)[^\}]*\}/)?
         continue
 
       # if snippet
@@ -80,7 +80,6 @@ module.exports =
     env_pairs = []
     current_row = bufferPosition.row
 
-    env_name = null
     # from current_row to the beginning,
     # to search current unclosed environment's name
     while current_row > 0
@@ -91,7 +90,8 @@ module.exports =
       else
         line = editor.getBuffer().lineForRow(current_row)
 
-      line = line.split('').reverse().join('')
+      console.log line
+      line = line.trim().split('').reverse().join('')
 
       # if find end env tag
       end_match = env_end_pattern.exec(line)
@@ -103,15 +103,16 @@ module.exports =
       # env_name = line.match(env_begin_pattern)?[1].split('').reverse().join('') or null
       start_match = env_begin_pattern.exec(line)
       while start_match?
+        console.log start_match
         if env_pairs.length == 0
           env_name = start_match[1].split('').reverse().join('')
-          break
+          return env_name
         env_pairs.pop()
         start_match = env_begin_pattern.exec(line)
 
       current_row -= 1
 
-    env_name
+    null
 
   # loading cwl snippet from file
   loadCompletions: ->

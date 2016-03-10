@@ -301,8 +301,9 @@ module.exports = Latextools =
   getProvider: ->
     # if using cwl-completion, load autocomplete provider
     if atom.config.get("latextools.commandCompletion") != 'never'
-      @requireIfNeeded ['cwl-provider']
-    @cwlProvider
+      @cwlProvider = require './ltcwl-completion'
+      @cwlProvider.loadCompletions()
+      @cwlProvider
 
   deactivate: ->
     @subscriptions.dispose()
@@ -358,6 +359,3 @@ module.exports = Latextools =
         when "snippet-manager"
           SnippetManager ?= require './snippet-manager'
           @snippetManager ?= new SnippetManager(@ltConsole)
-        when "cwl-provider"
-          @cwlProvider ?= require './ltcwl-completion'
-          @cwlProvider.loadCompletions()
