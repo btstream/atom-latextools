@@ -130,27 +130,33 @@ module.exports =
     # path of saving cwl list
     # Does any one know what license the latexing-cwl is using?
     # could we use them directly?
-    cwl_data_path = path.join __dirname, "..", "data", "cwl-completion-files"
+    # cwl_data_path = path.join __dirname, "..", "data", "cwl-completion-files"
+    #
+    cwl_package_path = atom.packages.resolvePackagePath("latextools-cwl-completion-files")
 
-    for cwl in cwl_list
-      f = path.join(cwl_data_path, "#{cwl}.cwl")
-      try
-        # reading and parsing cwl files
-        lines = fs.readFileSync(f, 'utf8').split('\n')
-        for line in lines
-          l = line.trim()
+    if cwl_package_path?
+        cwl_data_path = path.join(cwl_package_path, "data")
+        for cwl in cwl_list
+          f = path.join(cwl_data_path, "#{cwl}.cwl")
+          try
+            # reading and parsing cwl files
+            lines = fs.readFileSync(f, 'utf8').split('\n')
+            for line in lines
+              l = line.trim()
 
-          # ignore comment and blank lines
-          if not l.startsWith('#') and l.length != 0
-            parse_result = @_parseCwlSnippets l
-            if parse_result?
-              @completions.push [parse_result.slice(1), cwl, true]
-            else
-              @completions.push [l.slice(1), cwl, false]
+              # ignore comment and blank lines
+              if not l.startsWith('#') and l.length != 0
+                parse_result = @_parseCwlSnippets l
+                if parse_result?
+                  @completions.push [parse_result.slice(1), cwl, true]
+                else
+                  @completions.push [l.slice(1), cwl, false]
 
-      catch error
-        # if reading errors
-        console.log "Reading file #{f} error, make sure it exist!"
+          catch error
+            # if reading errors
+            console.log "Reading file #{f} error, make sure it exist!"
+    else
+        atom.notifications.addInfo("latextools-cwl-completion-files package does not installed! Please install it to use command completion function!")
 
   # parsing cwl strings to snippet
   _parseCwlSnippets: (cwl_string) ->
