@@ -1,12 +1,92 @@
 {LTool,get_tex_root,find_in_files,is_file} = require './ltutils'
-LTSelectListView = require './ltselectlist-view'
-LTSelectList2View = require './ltselectlist2-view'
+LTSimpleSelectList = require './views/ltsimple-select-list-view'
+LTTwoLineSelectList = require './views/lttwo-line-select-list-view'
 #get_ref_completions = require './get-ref-completions'
 get_bib_completions = require './parsers/get-bib-completions'
 path = require 'path'
 fs = require 'fs'
 
-module.exports =
+# ref_rx = /\\(?:eq|page|v|V|auto|name|c|C|cpage)?ref\{/
+module.exports.ref_rx_rev = ref_rx_rev =
+  /^\{fer(?:qe|egap|v|V|otua|eman|c|C|egapc)?\\/
+
+# Avoids trigger-happy autocomplete
+# Multipart regex break-down:
+# 1. \(hyphen|foreign)(text|block)quote* - csquotes
+# 2. \hybridblockquote* - csquotes
+# 3. \(hyphen|foreign)(text|block)cquote* - csquotes
+# 4. \hybridcquote* - csquotes
+# 5. \(text|block)cquote* - csquotes
+# 6. \volcite* - biblatex
+# 7. \volcites* - biblatex
+# 8. \cites* - biblatex
+# 9. most \cite commands
+# 10. \cite<> etc. - apacite
+module.exports.cite_rx_rev = cite_rx_rev = ///^
+(?:
+(?:(?:,[^\[\],]*)*\[\}[^\{]*\{
+  \*?etouq(?:kcolb|txet)(?:ngierof|nehpyh))|
+(?:(?:,[^\[\],]*)*\[\}[^\{]*\{
+  \*?etouq(?:kcolbdirbyh))|
+(?:(?:,[^\[\],]*)*\[\*?etouq(?:kcolb|txet))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}\}[^\{]*\{
+  \*?etouqc(?:kcolb|txet)(?:ngierof|nehpyh))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}\}[^\{]*\{
+  \*?etouqc(?:kcolbdirbyh))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  \*?etouqc(?:kcolb|txet))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?
+  eticlo[v|V](?:p|P|f|ft|s|S|t|T|a|A)?)|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?
+  (?:\}[^\{}]*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?)*
+  (?:\)[^(]*\(){0,2}
+  seticlo[v|V](?:p|P|f|ft|s|S|t|T|a|A)?)|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  (?:\}[^\}]*\{(?:\][^\[]*\[){0,2})*
+  (?:[\.\*\?]){0,2}(?:\)[^(]*\(){0,2}(?!elyts)(?:[a-zX\*]*?)
+  seti(?:C|c(?!lov)[a-z]*[A-Z]?))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  (?:[\.\*\?]){0,2}(?!\*?teser|elyts)(?:[a-zX\*]*?)
+  eti(?:C|c(?!lov|m\\)[a-z]*[A-Z]?))|
+(?:(?:,[^{},]*)*\{(?:\][^\[]*\[)?
+  (?:>[^<]*<)?(?:(?:PN)?raey|rohtua|PN|A)?etic(?:lluf|trohs)?(?:ksam)?)
+)\\
+///
+
+# differs from the above in having capture groups to capture any
+# input
+module.exports.cite_rx_rev_key_press = cite_rx_rev_key_press = ///^
+(?:
+(?:([^\[\],]*)(?:,[^\[\],]*)*\[\}[^\{]*\{
+  \*?etouq(?:kcolb|txet)(?:ngierof|nehpyh))|
+(?:([^\[\],]*)(?:,[^\[\],]*)*\[\}[^\{]*\{
+  \*?etouq(?:kcolbdirbyh))|
+(?:([^\[\],]*)(?:,[^\[\],]*)*\[\*?etouq(?:kcolb|txet))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}\}[^\{]*\{
+  \*?etouqc(?:kcolb|txet)(?:ngierof|nehpyh))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}\}[^\{]*\{
+  \*?etouqc(?:kcolbdirbyh))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  \*?etouqc(?:kcolb|txet))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?
+  eticlo[v|V](?:p|P|f|ft|s|S|t|T|a|A)?)|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?
+  (?:\}[^\{}]*\{(?:\][^\[]*\[)?\}[^\{}]*\{(?:\][^\[]*\[)?)*
+  (?:\)[^(]*\(){0,2}
+  seticlo[v|V](?:p|P|f|ft|s|S|t|T|a|A)?)|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  (?:\}[^\}]*\{(?:\][^\[]*\[){0,2})*
+  (?:[\.\*\?]){0,2}(?:\)[^(]*\(){0,2}(?!elyts)(?:[a-zX\*]*?)
+  seti(?:C|c(?!lov)[a-z]*[A-Z]?))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[){0,2}
+  (?:[\.\*\?]){0,2}(?!\*?teser|elyts)(?:[a-zX\*]*?)
+  eti(?:C|c(?!lov|m\\)[a-z]*[A-Z]?))|
+(?:([^{},]*)(?:,[^{},]*)*\{(?:\][^\[]*\[)?
+  (?:>[^<]*<)?(?:(?:PN)?raey|rohtua|PN|A)?etic(?:lluf|trohs)?(?:ksam)?)
+)\\
+///
+
+module.exports.CompletionManager =
 
 class CompletionManager extends LTool
   sel_view: null
@@ -15,19 +95,21 @@ class CompletionManager extends LTool
 
   constructor: (@ltconsole) ->
     super
-    @sel_view = new LTSelectListView
-    @sel2_view = new LTSelectList2View
+    @sel_view = new LTSimpleSelectList
+    @sel2_view = new LTTwoLineSelectList
 
 
   refCiteComplete: (te, keybinding = false) ->
     max_length = 100 # max length of ref/cite command, including backslash
-    #ref_rx = /\\(?:eq|page|v|V|auto|name|c|C|cpage)?ref\{/
-    ref_rx_rev = /^\{fer(?:qe|egap|v|V|otua|eman|c|C|egapc)?/
-    #cite_rx = /\\cite[a-z\*]*?(?:\[.*?\]){0,2}\{/
-    cite_rx_rev = /^([^{},]*)(?:,[^{},]*)*\{(?:\].*?\[){0,2}([a-zX*]*?)etic\\/
+
+    cite_rx_rev =
+      if keybinding
+        cite_rx_rev_key_press
+      else
+        cite_rx_rev
 
     current_point = te.getCursorBufferPosition()
-    initial_point = [current_point.row, Math.max(0,current_point.column - max_length)]
+    initial_point = [current_point.row, Math.max(0, current_point.column - max_length)]
     range = [initial_point, current_point]
     line = te.getTextInBufferRange(range)
 
@@ -39,14 +121,19 @@ class CompletionManager extends LTool
     # TODO: pass initial match to select list
 
     if (keybinding or atom.config.get("latextools.refAutoTrigger")) and
-    m = ref_rx_rev.exec(line)
+        m = ref_rx_rev.exec(line)
       console.log("found match")
       @refComplete(te)
+      return true
     else if (keybinding or atom.config.get("latextools.citeAutoTrigger")) and
-    m = cite_rx_rev.exec(line)
+        m = cite_rx_rev.exec(line)
       console.log("found match")
       console.log(m)
       @citeComplete(te)
+      return true
+    else
+      return false
+
 
     # got_ref = false
     # te.backwardsScanInBufferRange ref_rx, range, ({match, stop}) =>
@@ -82,7 +169,7 @@ class CompletionManager extends LTool
 
     # TODO add partially specified label to search field
     @sel_view.setItems(labels)
-    @sel_view.start (item) =>
+    @sel_view.start te, (item) =>
       te.insertText(item)
       # see if we need to skip a brace
       pt = te.getCursorBufferPosition()
@@ -119,7 +206,10 @@ class CompletionManager extends LTool
       b
 
     if bibs.length == 0
-      alert("Could not find bib files. Please check your \\bibliography statements")
+      atom.notifications.addWarning(
+        "Could not find any bib files. " +
+        "Please check your \\bibliography statements"
+      )
       return
 
     # If it's a single string, put it in an array
@@ -133,7 +223,10 @@ class CompletionManager extends LTool
       item_fmt = atom.config.get("latextools.citePanelFormat")
 
       if item_fmt.length != 2
-        alert "Incorrect citePanelFormat specification. Check your preferences!"
+        atom.notifications.addError(
+          "Incorrect citePanelFormat specification. Check your preferences!",
+          detail: "Expected 2 entries but got #{item_fmt.length}"
+        )
         return
 
       # Inelegant but safe
@@ -155,7 +248,7 @@ class CompletionManager extends LTool
         bibentries.push( {"primary": primary, "secondary": secondary, "id": keywords[i]} )
 
     @sel2_view.setItems(bibentries)
-    @sel2_view.start (item) =>
+    @sel2_view.start te, (item) =>
       te.insertText(item.id)
       # see if we need to skip a brace
       pt = te.getCursorBufferPosition()

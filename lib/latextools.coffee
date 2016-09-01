@@ -4,6 +4,7 @@ Viewer = null
 ViewerRegistry = null
 CompletionManager = null
 SnippetManager = null
+deleteTempFiles = null
 {Disposable, CompositeDisposable} = require 'atom'
 path = require 'path'
 
@@ -81,22 +82,22 @@ module.exports = Latextools =
     #   default: true
     #   order: 10
 
-    # temporaryFileExtensions:
-    #   type: 'array'
-    #   default: [
-		#           ".blg",".bbl",".aux",".log",".brf",".nlo",".out",".dvi",".ps",
-		#           ".lof",".toc",".fls",".fdb_latexmk",".pdfsync",".synctex.gz",
-    #           ".ind",".ilg",".idx"
-	  #            ]
-    #   items:
-    #     type: 'string'
-    #   order: 11
-    # temporaryFilesIgnoredFolders:
-    #   type: 'array'
-    #   default: [".git", ".svn", ".hg"]
-    #   items:
-    #     type: 'string'
-    #   order: 12
+    temporaryFileExtensions:
+      type: 'array'
+      default: [
+        ".blg",".bbl",".aux",".log",".brf",".nlo",".out",".dvi",".ps",
+        ".lof",".toc",".fls",".fdb_latexmk",".pdfsync",".synctex.gz",
+        ".ind",".ilg",".idx"
+      ]
+      items:
+        type: 'string'
+      order: 11
+    temporaryFilesIgnoredFolders:
+      type: 'array'
+      default: [".git", ".svn", ".hg"]
+      items:
+        type: 'string'
+      order: 12
 
     darwin:
       type: 'object'
@@ -237,6 +238,21 @@ module.exports = Latextools =
       # is run on
       te = `this.getModel()`
       @completionManager.refCiteComplete(te, keybinding=true)
+    @subscriptions.add atom.commands.add 'atom-text-editor', 'latextools:ref-cite-keypress': (e) =>
+      e.abortKeyBinding()
+      @requireIfNeeded ['completion-manager', 'snippet-manager']
+      # drop to JS to call this.getModel() which is the TextEditor the command
+      # is run on
+      te = `this.getModel()`
+      setTimeout (=>
+        @completionManager.refCiteComplete(te)
+      ), 50
+    @subscriptions.add atom.commands.add 'atom-text-editor', 'latextools:delete-temp-files': =>
+      deleteTempFiles ?= require './commands/delete-temp-files'
+      # drop to JS to call this.getModel() which is the TextEditor the command
+      # is run on
+      te = `this.getModel()`
+      deleteTempFiles(te)
 
     # Snippet insertion
 
@@ -280,24 +296,6 @@ module.exports = Latextools =
       @requireIfNeeded ['snippet-manager']
       @snippetManager.quotes('``', '\'\'', '"')
 
-
-    # Autotriggered functionality
-    # add autocomplete to every text editor that has a tex file
-    atom.workspace.observeTextEditors (te) =>
-      if !( path.extname(te.getPath()) in atom.config.get('latextools.texFileExtensions') )
-        return
-      @subscriptions.add te.onDidStopChanging =>
-        # it doesn't make sense to trigger completions on an inactive text editor
-        if te isnt atom.workspace.getActiveTextEditor()
-          return
-        @requireIfNeeded ['completion-manager', 'snippet-manager']
-        @completionManager.refCiteComplete(te, keybinding=false) \
-        if atom.config.get("latextools.refAutoTrigger") or
-          atom.config.get("latextools.citeAutoTrigger")
-
-        # add more here?
-
-
   getProvider: ->
     # if using cwl-completion, load autocomplete provider
     if atom.config.get("latextools.commandCompletion") != 'never'
@@ -320,16 +318,17 @@ module.exports = Latextools =
   # Private: ensure modules are loaded on demand
   requireIfNeeded: (modules) ->
     # ltConsole is needed by all, so load it
-    unless LTConsole?
-      LTConsole = require './ltconsole'
-      @ltConsole = new LTConsole @state.ltConsoleState
+    LTConsole ?= require './ltconsole'
+    @ltConsole ?= new LTConsole @state.ltConsoleState
 
     for m in modules
       console.log("requiring if needed: #{m}")
       switch m
         when "viewer"
-          unless Viewer?
-            ViewerRegistry = require './viewer-registry'
+          ViewerRegistry ?= require './viewer-registry'
+          Viewer ?= require './viewer'
+
+          unless @viewerRegistry?
             @viewerRegistry = new ViewerRegistry
 
             @viewerRegistry.add 'pdf-view',
@@ -346,15 +345,17 @@ module.exports = Latextools =
                 @viewerRegistry.add ['default', 'okular'],
                   require './viewers/okular-viewer'
 
-            Viewer = require './viewer'
-            @viewer = new Viewer @viewerRegistry, @ltConsole
+          @viewer ?= new Viewer @viewerRegistry, @ltConsole
         when "builder"
-          unless Builder?
-            Builder = require './builder'
+          Builder ?= require './builder'
+          unless @builder?
             @builder = new Builder(@ltConsole)
-            @builder.viewer = @viewer # NOTE: MUST be loaded first!
+
+            # ensure viewer is loaded before builder
+            requireIfNeeded ['viewer'] unless @viewer?
+            @builder.viewer = @viewer
         when "completion-manager"
-          CompletionManager ?= require './completion-manager'
+          CompletionManager ?= require('./completion-manager').CompletionManager
           @completionManager ?= new CompletionManager(@ltConsole)
         when "snippet-manager"
           SnippetManager ?= require './snippet-manager'
