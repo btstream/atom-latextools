@@ -132,7 +132,7 @@ module.exports =
     # could we use them directly?
     # cwl_data_path = path.join __dirname, "..", "data", "cwl-completion-files"
     #
-    cwl_package_path = atom.packages.resolvePackagePath("latextools-cwl-completion-files")
+    cwl_package_path = atom.packages.resolvePackagePath("latex-cwl")
 
     if cwl_package_path?
         cwl_data_path = path.join(cwl_package_path, "data")
@@ -156,7 +156,7 @@ module.exports =
             # if reading errors
             console.log "Reading file #{f} error, make sure it exist!"
     else
-        atom.notifications.addInfo("latextools-cwl-completion-files package does not installed! Please install it to use command completion function!")
+        atom.notifications.addInfo("latex-cwl package is not been installed! Please install it to use command completion function!")
 
   # parsing cwl strings to snippet
   _parseCwlSnippets: (cwl_string) ->
